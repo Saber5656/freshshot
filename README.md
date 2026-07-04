@@ -1,0 +1,2 @@
+# freshshot
+docs内のUIスクリーンショットをE2Eで自動再撮影する
