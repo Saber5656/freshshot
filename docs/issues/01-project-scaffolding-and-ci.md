@@ -50,7 +50,9 @@ property (DESIGN §17.9): the runtime dependency list is exhaustive and must not
    `src/core/paths.ts`, `src/diff/compare.ts`, `src/scan/**`, `src/config/**` at `lines: 95`
    (configured now via `coverage.thresholds` with glob keys; files may not exist yet — use the
    documented vitest behavior that missing files are ignored, and leave a comment).
-   Test file pattern: `tests/**/*.test.ts`.
+   Define two named vitest projects now: `unit` (include `tests/unit/**/*.test.ts`,
+   `tests/integration/**/*.test.ts`) and `browser` (include `tests/browser/**/*.test.ts`;
+   empty until issue 09).
 5. `biome.json`: recommended rules, formatter enabled (2-space indent, 100-col line width),
    organize imports on. Exclude `dist/`, `coverage/`, `.freshshot/`.
 6. `.gitignore`: `node_modules/`, `dist/`, `coverage/`, `.freshshot/`, `*.tsbuildinfo`.
@@ -64,9 +66,10 @@ property (DESIGN §17.9): the runtime dependency list is exhaustive and must not
    - **All action references pinned to full commit SHAs** with a trailing version comment
      (DESIGN §17.9).
    - A separate job `browser-tests` (same triggers, ubuntu-latest, Node 22) that additionally
-     runs `npx playwright install chromium --with-deps` and `npm run test -- --project browser`;
-     until browser tests exist this job runs vitest with a filter that matches zero files and
-     passes (leave a `TODO(issue-09)` comment).
+     runs `npx playwright install chromium --with-deps` and then
+     `npx vitest run --project browser --passWithNoTests`; the `browser` project has no tests
+     until issue 09, and `--passWithNoTests` keeps the job green until then (leave a
+     `TODO(issue-09): drop --passWithNoTests` comment in the workflow).
 9. `.github/dependabot.yml`: weekly updates for `npm` and `github-actions` ecosystems.
 10. `src/core/types.ts`: create with a placeholder exported type
     `export type Placeholder = never;` replaced by later issues; plus

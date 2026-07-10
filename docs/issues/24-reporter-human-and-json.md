@@ -58,8 +58,9 @@ impossible to merge silently.
 - [ ] Human snapshot tests (normalized) for the same four scenarios; colored variant asserted
       to contain ANSI codes only when forced TTY+color.
 - [ ] `--quiet` and `--verbose` behaviors verified for `update`.
-- [ ] Injecting a shot id containing a fake ANSI sequence (via config fixture) shows the
-      sanitized form in both human and JSON outputs.
+- [ ] An ANSI/control sequence arriving through an error path — a hook that throws an `Error`
+      whose message embeds `\x1b[31m` (shot ids themselves cannot carry ANSI per the §6.2 id
+      regex) — is shown sanitized in both human and JSON outputs.
 - [ ] No command writes anything to stdout without `--json` (integration assert across all
       four commands).
 

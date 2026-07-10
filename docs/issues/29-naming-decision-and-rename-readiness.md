@@ -7,7 +7,8 @@ Naming decision and rename readiness (human-gated)
 Resolve ADR-007: generate and verify name candidates (npm/GitHub availability, collision scan),
 present a decision package to the product owner, and — after the human decision — execute the
 mechanical rename sweep across package, binary, config filename, state directory, and docs.
-Publication (issue 28) is blocked until this issue closes.
+The actual first `npm publish` (a human-executed step whose prerequisites issue 28 documents in
+RELEASING.md) is blocked until this issue closes.
 
 ## Context
 
@@ -28,7 +29,9 @@ evidence and executes the outcome, but never chooses the name.
    `docshot`, `shotdoc`, `docsnap`, `snapdocs`, `evershot`, `screenfresh`, `docfresh`,
    `freshframe`, `stillshot`, `shotkeeper`. Selection criteria (score each 1–5 in a table):
    pronounceable, evokes "docs + screenshots + freshness", short (≤ 10 chars), no trademark
-   red flags from a basic web search, npm-unscoped available, GitHub org/repo name free enough.
+   red flags from a basic web search, npm-unscoped available, GitHub availability (no exact
+   `github.com/<any-owner>/<name>` collision with an **active same-purpose** repo within the
+   top 10 `gh search repos` results).
 2. Availability verification per candidate, recorded with command + date:
    - `npm view <name>` (must 404 for "available");
    - `gh search repos <name> --limit 10` (note collisions and their activity);
@@ -46,9 +49,14 @@ evidence and executes the outcome, but never chooses the name.
      `docs/reference/**`, templates).
    - Keep a compatibility note ONLY if the owner asks; default is a clean cut (pre-1.0, no
      users yet).
+   - Canonical planning docs are NOT rewritten; instead each of `docs/DESIGN.md`,
+     `docs/ISSUE_PLAN.md`, and `docs/decisions/ADR-007-*.md` receives a one-line banner
+     immediately under its H1:
+     `> Renamed: the working name "freshshot" in this document refers to the published product "<final-name>" (ADR-008).`
+     — canonical docs stay non-stale without history rewriting (ADR-007).
    - Acceptance: `git grep -i freshshot` returns matches only in `docs/research/**`,
      `docs/decisions/**`, and historical planning docs (`docs/DESIGN.md`, `docs/ISSUE_PLAN.md`,
-     `docs/issues/**` keep the working name as history — do NOT rewrite them); zero matches in
+     `docs/issues/**` keep the working name as history); zero matches in
      `src/**`, `tests/**`, `package.json`, `README.md`, `docs/reference/**`.
    - Full test suite + pack-smoke green after the sweep.
 6. Owner checklist (manual): GitHub repo rename (redirect preserved), update any external
@@ -62,7 +70,8 @@ evidence and executes the outcome, but never chooses the name.
 - [ ] Human decision explicitly obtained and quoted — the agent did not self-select.
 - [ ] Post-sweep: grep criterion above holds; CI + pack-smoke green; `--version` and `init`
       show the new name.
-- [ ] Issue 28's RELEASING.md prerequisite checkbox for naming flips to done.
+- [ ] If `RELEASING.md` exists, its naming-gate prerequisite checkbox flips to done; otherwise
+      ADR-008 records the decision as the publish-gate evidence for issue 28 to consume.
 
 ## Validation
 
@@ -71,8 +80,9 @@ evidence and executes the outcome, but never chooses the name.
 
 ## Dependencies
 
-- None for the research half (can run any time); the sweep half should land after 26/28 exist
-  so docs and packaging are swept together. Blocks: actual `npm publish` (28).
+- None. Sequencing guidance (not a dependency): the research half can run at any time; execute
+  the rename sweep as the final pre-publish step so that docs (26) and packaging (28)
+  artifacts, where already present, are swept together. Blocks: the actual first `npm publish`.
 
 ## Non-goals
 

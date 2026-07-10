@@ -29,8 +29,9 @@ stays trivial and failures always name their shot.
    a. `createShotContext(browser, shot.effective)` (issue 09)
    b. `applyContextDeterminism(context, shot.effective)` (issue 10)
    c. `page = await context.newPage()`
-   d. `runSteps(shot.steps, stepCtx)` (issues 11–13) with `defaultTimeoutMs =
-      shot.effective.stepTimeoutMs`
+   d. `runSteps(shot.steps, { page, baseUrl: deps.baseUrl, allowedOrigins:
+      deps.allowedOrigins, shotId: shot.id, hooks: deps.hooks, defaultTimeoutMs:
+      shot.effective.stepTimeoutMs, warn: deps.warn })` (issues 11–13)
    e. `applyPageDeterminism(page, shot.effective)` (issue 10)
    f. `takeScreenshot(page, shot.captureSpec, { mask: shot.mask, maskColor: shot.maskColor,
       timeoutMs: shot.effective.stepTimeoutMs })` (issue 14)
@@ -54,9 +55,10 @@ use the static server to exercise realistic http):
       pre-call value (no context leak) — the failing case asserts the error is the original
       `STEP_FAILED` with the shot id in its message.
 - [ ] A hook-using shot works end-to-end (hooks registry from issue 13 threaded through).
-- [ ] An unexpected error injected via a hook that closes the page mid-run surfaces as a
-      `FreshshotError` (either the step's own code or wrapped `CAPTURE_FAILED`), never a bare
-      Playwright error.
+- [ ] A hook closes the page and returns normally; the subsequent
+      `applyPageDeterminism`/`takeScreenshot` throws a bare Playwright error, and `captureShot`
+      wraps it as `FreshshotError` with code `CAPTURE_FAILED`, a message containing the shot
+      id, and `cause` set to the original error — never a bare Playwright error.
 - [ ] Two sequential `captureShot` calls with the same shot produce byte-identical PNGs on the
       static fixture (local determinism smoke; the product-wide invariant is issue 25).
 
@@ -74,4 +76,5 @@ use the static server to exercise realistic http):
 
 ## Design References
 
-- DESIGN §4.2 (data flow), §4.3 (isolation), §10 (ordering), §16 (error pass-through)
+- DESIGN §4.2 (data flow), §4.3 (isolation), §10 (ordering), §11 (capture/context cleanup),
+  §16 (error pass-through)

@@ -30,10 +30,16 @@ screenshot arbitrary origins (SSRF-style) unless explicitly allow-listed.
      allowedOrigins: readonly string[];
      defaultTimeoutMs: number;      // effective.stepTimeoutMs
      shotId: string;
-     hooks: HooksRegistry | null;   // from issue 13; may be null until then
+     hooks: HooksRegistry | null;   // structural interface owned by this issue; implemented by issue 13
      warn(msg: string): void;       // reporter hook for lint warnings
    }
    export async function runSteps(steps: ResolvedStep[], ctx: StepContext): Promise<void>
+   ```
+   This issue also declares the structural interfaces in `src/core/types.ts` (issue 13
+   implements them in `src/capture/hooks.ts` without changing the shapes):
+   ```ts
+   export interface HookContext { page: Page; baseUrl: string; shotId: string; log(msg: string): void; }
+   export interface HooksRegistry { has(name: string): boolean; invoke(name: string, ctx: HookContext, timeoutMs: number): Promise<void>; }
    ```
 2. Dispatch: a `switch` over the step's discriminant covering every DESIGN §7 step type;
    unknown discriminants are unreachable (config guarantees) — assert with `never`.

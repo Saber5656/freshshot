@@ -29,11 +29,14 @@ itself.
      acknowledgement within 7 days, fix-or-mitigation target 90 days; no bounty.
    - Trust model summary for users (from ADR-003 / DESIGN §17.2): config and hooks are code;
      review them like CI workflow changes; `update` in CI should run with least-privilege
-     tokens; freshshot makes no network calls beyond the configured app and origins.
+     tokens; main-frame navigation is confined to the configured app origin + allow-list
+     (pre-navigation and post-redirect checks), while the target app's own sub-resource
+     requests are NOT blocked in v1 and must be reviewed as app behavior (DESIGN §17.4).
    - Enabling GitHub private vulnerability reporting itself is a **human maintainer step** —
      list it as a checklist item for the owner, do not attempt via API.
 2. `docs/security-audit-v1.md`: a table with one row per §17 requirement
-   (17.3 confinement — outputs/hooks/static/cwd/globs/static-server requests; 17.4 origin
+   (17.3 confinement — outputs/hooks/static/cwd/globs/static-server requests, each including
+   the realpath/symlink-ancestor escape rejection; 17.4 origin
    policy pre-nav + post-redirect; 17.5 no-secrets posture incl. docs warnings; 17.6 parser
    limits (2 MiB, alias cap, PNG containment); 17.7 sanitization in errors/reporter/server
    logs; 17.8 loopback binding + nosniff + no-listing + method limits; 17.9 lockfile, `npm ci`,
@@ -51,7 +54,9 @@ itself.
    - static server request `GET /%2e%2e/%2e%2e/etc/hosts` (expect 404);
    - `goto` to a live non-allow-listed local port (expect `NAV_BLOCKED_ORIGIN`, zero requests);
    - hooks path outside root (expect `CONFIG_PATH_ESCAPE`);
-   - crafted shot id with ANSI escape in a failing message (expect sanitized output).
+   - a hook throwing an `Error` whose message embeds ANSI escapes, plus a server command
+     emitting ANSI/control sequences (expect sanitized reporter and server-diagnostic output;
+     shot ids themselves cannot carry ANSI per the §6.2 id regex).
    Each with the exact command/config used and observed result.
 
 ## Acceptance Criteria
@@ -70,7 +75,8 @@ itself.
 
 ## Dependencies
 
-- 25 (feature-complete product to audit).
+- 25 (feature-complete product to audit), 28 (release workflow artifacts must exist for the
+  §17.9 rows).
 
 ## Non-goals
 

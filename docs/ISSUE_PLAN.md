@@ -22,19 +22,19 @@ issues; nothing else remains.
 | # | Issue file | Title | Wave | Depends on | DESIGN |
 |---|---|---|---|---|---|
 | 01 | `issues/01-project-scaffolding-and-ci.md` | Project scaffolding, toolchain, and CI pipeline | 0 | — | §5, §18 |
-| 02 | `issues/02-error-taxonomy-and-exit-codes.md` | Core error taxonomy and exit-code contract | 0 | 01 | §16, §14.4 |
+| 02 | `issues/02-error-taxonomy-and-exit-codes.md` | Core error taxonomy and exit-code contract | 0 | 01 | §16, §14.4, §17.7 |
 | 03 | `issues/03-path-safety-module.md` | Filesystem root-confinement module | 0 | 01, 02 | §17.3 |
 | 04 | `issues/04-config-schema-and-loader.md` | Config schema, loader, and semantic validation | 0 | 01, 02, 03 | §6 |
-| 05 | `issues/05-cli-skeleton-and-global-flags.md` | CLI skeleton, global flags, output channels | 0 | 01, 02, 04 | §14.1–14.2, §14.4 |
+| 05 | `issues/05-cli-skeleton-and-global-flags.md` | CLI skeleton, global flags, and output channels | 0 | 01, 02, 04 | §14.1–14.2, §14.4 |
 | 06 | `issues/06-static-server-mode.md` | Static directory server mode | 1 | 01, 02, 03 | §9.1, §9.3, §17.8 |
 | 07 | `issues/07-command-server-mode.md` | Managed command server mode | 1 | 01, 02 | §9.1–9.2, §17.7 |
 | 08 | `issues/08-server-mode-resolution.md` | Server mode resolution and lifecycle wiring | 1 | 04, 06, 07 | §9.1, §9.4 |
 | 09 | `issues/09-browser-session-manager.md` | Chromium session and context factory | 2 | 01, 02, 04 | §5, §10(1), §11 |
 | 10 | `issues/10-determinism-toolkit.md` | Determinism toolkit | 2 | 09 | §10 |
-| 11 | `issues/11-step-dsl-navigation-and-waits.md` | Step DSL: interpreter core, goto, waits, origin policy | 2 | 02, 04, 09 | §7, §17.4 |
+| 11 | `issues/11-step-dsl-navigation-and-waits.md` | Step DSL: interpreter core, goto, waits, and the origin policy | 2 | 02, 04, 09 | §7, §17.4 |
 | 12 | `issues/12-step-dsl-interactions.md` | Step DSL: interaction steps | 2 | 11 | §7 |
-| 13 | `issues/13-hooks-loader-and-executor.md` | Hooks module loader and executor | 2 | 03, 04, 09 | §8 |
-| 14 | `issues/14-screenshot-capture-engine.md` | Screenshot capture engine (viewport/element/fullPage/mask) | 2 | 09 | §11 |
+| 13 | `issues/13-hooks-loader-and-executor.md` | Hooks module loader and executor | 2 | 03, 04, 09, 11 | §8 |
+| 14 | `issues/14-screenshot-capture-engine.md` | Screenshot capture engine (viewport / element / fullPage, masks) | 2 | 09 | §11 |
 | 15 | `issues/15-single-shot-orchestrator.md` | Single-shot orchestrator | 2 | 10, 11, 12, 13, 14 | §4.2, §11, §16 |
 | 16 | `issues/16-png-perceptual-diff-engine.md` | PNG decode and perceptual diff engine | 3 | 01, 02 | §12.1 |
 | 17 | `issues/17-gated-atomic-writer-and-diff-artifacts.md` | Gated atomic writer and diff artifacts | 3 | 03, 16 | §12.2, §15 |
@@ -43,13 +43,13 @@ issues; nothing else remains.
 | 20 | `issues/20-markdown-image-reference-scanner.md` | Markdown image reference scanner | 4 | 01, 02, 03 | §13.1, §17.6 |
 | 21 | `issues/21-coverage-classification-engine.md` | Coverage classification engine | 4 | 04, 20 | §13.2 |
 | 22 | `issues/22-coverage-and-list-commands.md` | `coverage` and `list` commands | 4 | 05, 21 | §13.3, §14 |
-| 23 | `issues/23-init-command.md` | `init` command | 4 | 05 | §14.1, §15 |
+| 23 | `issues/23-init-command.md` | `init` command | 4 | 04, 05 | §14.1, §15 |
 | 24 | `issues/24-reporter-human-and-json.md` | Reporter: human output and stable JSON schema | 5 | 18, 19, 22 | §14.2–14.3, §17.7 |
 | 25 | `issues/25-e2e-test-suite-and-fixture.md` | End-to-end CLI test suite and fixture project | 5 | 18, 19, 22, 23, 24 | §18 |
 | 26 | `issues/26-user-documentation.md` | User documentation (README, references, CI recipe) | 6 | 25 | §3, §6–§14, §17.5 |
-| 27 | `issues/27-security-policy-and-hardening-audit.md` | SECURITY.md and security hardening audit | 6 | 25 | §17 |
+| 27 | `issues/27-security-policy-and-hardening-audit.md` | SECURITY.md and security hardening audit | 6 | 25, 28 | §17 |
 | 28 | `issues/28-npm-packaging-and-release-workflow.md` | npm packaging and release workflow | 6 | 25 | §19 |
-| 29 | `issues/29-naming-decision-and-rename-readiness.md` | Naming decision and rename readiness (human-gated) | 6 | — | §19, ADR-007 |
+| 29 | `issues/29-naming-decision-and-rename-readiness.md` | Naming decision and rename readiness (human-gated) | 6 | — (research half; the rename sweep executes as the final pre-publish step) | §19, ADR-007 |
 
 ## 3. Dependency graph (summary)
 
@@ -68,7 +68,9 @@ issues; nothing else remains.
 ```
 
 Within a wave, issues without mutual dependencies are parallelizable (e.g. 06‖07, 09–14 partially,
-20 ‖ 16, 23 ‖ 22).
+20 ‖ 16, 23 ‖ 22). The summary graph omits some satisfied lower-wave type-level edges shown in
+the §2 table (e.g. 04 → 21, 04 → 13, 04 → 23); when the graph and the table disagree, the table
+is authoritative.
 
 ## 4. Implementation waves
 
@@ -86,6 +88,8 @@ Within a wave, issues without mutual dependencies are parallelizable (e.g. 06‖
 
 | DESIGN section | Covered by |
 |---|---|
+| §1 Overview / §2 Goals & non-goals | scope guard for every issue; validated end-to-end by 25 (goals G1–G6) and 26–29 (G7) |
+| §3 Core workflows | 3.1 → 23/18, 3.2 → 18, 3.3 → 19 (+26 CI recipe), 3.4 → 22 (+26) |
 | §4 Architecture / §4.2 data flow | 15, 18 (and structure of all module issues) |
 | §5 Runtime & dependencies | 01 |
 | §6 Configuration | 04 (path rules with 03) |
@@ -99,10 +103,11 @@ Within a wave, issues without mutual dependencies are parallelizable (e.g. 06‖
 | §14 CLI | 05, 18, 19, 22, 23, 24 |
 | §15 Storage layout | 17, 23 |
 | §16 Error taxonomy | 02 (consumed by all) |
-| §17 Security model | 03 (17.3), 06 (17.8), 11 (17.4), 13 (17.2), 20 (17.6), 24 (17.7), 27 (audit + SECURITY.md), 28 (17.9) |
+| §17 Security model | 02 (17.7 sanitize helper), 03 (17.3), 06 (17.8), 11 (17.4), 13 (17.2), 20 (17.6), 24 (17.7), 27 (audit + SECURITY.md), 28 (17.9) |
 | §18 Testing strategy | per-issue Validation sections + 25 |
 | §19 Packaging & release | 28, 29 |
 | §20 v2 deferred / §21 unknowns | tracked below (§7, §8) |
+| §22 Document map | documentation map only — no implementation issue needed |
 
 Every externally reachable boundary in §17 has a named owning issue; security acceptance
 criteria are embedded in those issues so implementation agents cannot skip them.

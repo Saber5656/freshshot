@@ -28,13 +28,15 @@ blocks — determines whether coverage reports are trustworthy.
      docFile: string;           // root-relative, POSIX separators
      line: number; column: number;   // 1-based, from the containing node
      rawRef: string;            // as written
-     resolved: string | null;   // root-relative POSIX path; null when skipped/external
+     resolved: string;          // root-relative POSIX path (the normalized attempt when outsideRoot)
      kind: "markdown" | "html";
      outsideRoot: boolean;      // true when resolution escaped the root (→ broken)
    }
-   export interface ScanError { docFile: string; message: string; }   // DOCS_PARSE_FAILED records
+   export interface ScanError {
+     docFile: string; code: "DOCS_PARSE_FAILED"; message: string;  // maps to the issue-02 taxonomy
+   }
    export async function scanDocs(opts: { root: string; include: string[]; exclude: string[] }):
-     Promise<{ refs: ImageRef[]; files: string[]; errors: ScanError[] }>
+     Promise<{ refs: ImageRef[]; files: string[]; errors: ScanError[]; skippedExternal: number }>
    ```
 2. File enumeration: `fast-glob` with `{ cwd: root, dot: false, followSymbolicLinks: false,
    onlyFiles: true, ignore: exclude }`; results sorted lexicographically for deterministic
@@ -50,13 +52,15 @@ blocks — determines whether coverage reports are trustworthy.
      from the node's start position plus offset within the value.
    - Content inside `code`/`inlineCode` nodes is never visited for refs (mdast guarantees the
      separation; a fixture asserts it).
-5. Skip (→ `resolved: null`): URLs with a scheme (`http:`, `https:`, `data:`, `mailto:`, …),
-   protocol-relative `//…`, and pure anchors (`#…`). Strip `?query` and `#fragment` from kept
-   refs before resolution.
+5. Skip entirely — excluded from `refs`, counted in `skippedExternal` (DESIGN §13.1): URLs
+   with a scheme (`http:`, `https:`, `data:`, `mailto:`, …), protocol-relative `//…`, and pure
+   anchors (`#…`). Strip `?query` and `#fragment` from kept refs before resolution.
 6. Resolution: leading `/` → from root; otherwise relative to the doc file's directory.
-   Percent-decode the path (`%20` → space). Use issue-03 semantics for confinement: a ref
-   resolving outside the root sets `outsideRoot: true` (and `resolved` to the normalized
-   attempt) — it is never read from disk here.
+   Percent-decode the path with `decodeURIComponent` wrapped in try/catch: a malformed encoding
+   records a `ScanError` (code `DOCS_PARSE_FAILED`, message naming the ref and `docFile:line`)
+   and skips that single ref; the file's remaining refs and the scan continue. Use issue-03
+   semantics for confinement: a ref resolving outside the root sets `outsideRoot: true` (and
+   `resolved` to the normalized attempt) — it is never read from disk here.
 7. Extension filter: track only `.png .jpg .jpeg .gif .webp .svg .avif` (case-insensitive).
    Other extensions are not image refs (ignored).
 8. The scanner does not check file existence (issue 21 does) and never reads referenced files.
@@ -75,8 +79,10 @@ Fixtures cover, and tests assert exact `ImageRef` lists for:
 - [ ] `![x](../../outside.png)` from a root-level doc → `outsideRoot: true`.
 - [ ] Fenced code block containing `![x](nope.png)` and `<img src="nope2.png">` produces zero
       refs; same for `inlineCode`.
-- [ ] `http(s)://`, `//cdn`, `data:` and `#anchor` refs → `resolved: null` entries (kept for
-      diagnostics) and never resolved.
+- [ ] `http(s)://`, `//cdn`, `data:` and `#anchor` refs produce zero `refs` entries and
+      increment `skippedExternal` (fixture pins the exact count); they are never resolved.
+- [ ] A ref with malformed percent-encoding (`![x](a%zz.png)`) records one `DOCS_PARSE_FAILED`
+      `ScanError` naming the ref, skips only that ref, and the rest of the file still scans.
 - [ ] `.PNG` uppercase is tracked; `.pdf` is ignored.
 - [ ] Query/fragment stripped: `a.png?v=2#top` → `a.png`.
 - [ ] CRLF file parses with correct line numbers; 3 MiB fixture → `ScanError`, other files

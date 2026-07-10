@@ -54,13 +54,19 @@ correctly, with exhaustive tests.
 - [ ] Inside-root relative (`docs/img/a.png`), nested-new (`a/b/c.png` where `a/` doesn't exist),
       and absolute-inside-root paths resolve successfully.
 - [ ] Rejected with `CONFIG_PATH_ESCAPE`: `../x.png`, `a/../../x.png`, absolute path outside
-      root, path whose existing ancestor is a symlink pointing outside root, root itself (`.`)
-      when a file is expected — plus Windows-style `..\\` traversal on POSIX (backslash is a
-      valid filename char on POSIX; test documents the platform-specific expectation).
+      root, and a path whose existing ancestor is a symlink pointing outside root.
+- [ ] `resolveInsideRoot(root, ".")` succeeds (root itself is inside root), while
+      `assertPngOutputPath(root, ".", label)` rejects with `CONFIG_INVALID` (not a `.png` file).
+- [ ] Backslash handling is platform-specific and tested as such: on POSIX, `..\\x.png` is an
+      ordinary filename that resolves inside root; on Windows, backslashes are separators and
+      the same input must be rejected as traversal.
 - [ ] Symlink test: `root/link -> /tmp/outside` exists; `resolveInsideRoot(root, "link/f.png")`
       throws; a symlink pointing **inside** root passes.
 - [ ] `assertPngOutputPath` rejects `.PNG`, `.jpg`, no-extension with `CONFIG_INVALID`.
 - [ ] `toRootRelative` returns `/`-separated paths on all platforms.
+- [ ] `ensureParentDir` creates nested parents for a safe file path; rejects an outside-root or
+      symlink-escaping `absFile` with `CONFIG_PATH_ESCAPE`; and never creates any directory
+      outside root (assert the escape target's parent directory was not created).
 - [ ] Line coverage of `paths.ts` ≥ 95 %.
 
 ## Validation

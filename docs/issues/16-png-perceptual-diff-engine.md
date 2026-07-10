@@ -47,8 +47,10 @@ it is one of the ≥95 % coverage modules.
      encoded from the pixelmatch output buffer.
    - else `unchanged` (still reporting the ratio — the reporter shows it).
    - Boundary: ratio exactly equal to the gate is `unchanged` (strict `>`; DESIGN §12.2 table).
-5. Export `export function encodeDiffPng(...)` internals as needed but keep the public API to
-   `compareImages` (+ types).
+5. Keep helpers (e.g. PNG encoding of the diff image) private to the module; the exported
+   surface of `src/diff/compare.ts` is `compareImages` plus the outcome types only, and nothing
+   from this module is re-exported via `src/index.ts` or package exports (DESIGN §2.2: no
+   public programmatic API).
 6. No filesystem access; buffers in, outcome out.
 
 ## Acceptance Criteria
@@ -59,8 +61,10 @@ it is one of the ≥95 % coverage modules.
 - [ ] 2 % changed block with gate 0.001 → `changed`/`pixels`; `diffPng` decodes to 100×100.
 - [ ] Ratio exactly at the gate (e.g. 10 px / 10000 px, gate 0.001) → `unchanged`
       (strict-greater contract).
-- [ ] `threshold` behavior: a subtle per-pixel delta (e.g. RGB +6) counts as changed at
-      `threshold: 0.05` and as unchanged at `threshold: 0.3` (documents what the knob does).
+- [ ] `threshold` behavior: a moderate per-pixel delta (start with RGB +20 and calibrate
+      empirically against pixelmatch's YIQ color metric, keeping the same two-threshold
+      contrast) counts as changed at `threshold: 0.05` and as unchanged at `threshold: 0.3`
+      (documents what the knob does).
 - [ ] 100×100 vs 100×101 → `changed`/`dimension-mismatch`, ratio 1, `diffPng === null`.
 - [ ] `baseline: null` → `new`; truncated-bytes baseline → `baseline-undecodable`; truncated
       candidate → throws `CAPTURE_FAILED`.

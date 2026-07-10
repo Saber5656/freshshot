@@ -27,11 +27,14 @@ GET/HEAD only, no listing, no traversal, no caching.
      `baseUrl = http://127.0.0.1:<assignedPort>`.
    - Request handling:
      a. Methods other than GET/HEAD → `405` with `Allow: GET, HEAD`.
-     b. Decode the URL path with `decodeURIComponent` (reject malformed → 400); strip query.
-     c. Resolve against `root` using `resolveInsideRoot` (issue 03); any
+     b. Parse `req.url` with `new URL(req.url, baseUrl)` and take `pathname` (this strips the
+        query); decode it with `decodeURIComponent` (malformed → 400).
+     c. Strip the leading `/` to obtain a root-relative path (empty string becomes `"."`),
+        then resolve via `resolveInsideRoot(root, relPath)` (issue 03); any
         `CONFIG_PATH_ESCAPE` → plain `404` (never echo paths or reasons; DESIGN §9.3).
-     d. Path is a directory → serve `<dir>/index.html` if it exists, else `404`
-        (no directory listing).
+     d. Path is a directory → synthesize `<relPath>/index.html` and re-run it through
+        `resolveInsideRoot` before stat/stream (a symlinked index escaping the root must 404);
+        serve it if it exists, else `404` (no directory listing).
      e. File missing/unreadable → `404`. Success → `200` with the file streamed.
    - Headers on every response: `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`.
    - Content types (minimum map): html, css, js/mjs, json, png, jpg/jpeg, gif, webp, svg, avif,

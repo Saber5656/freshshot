@@ -25,7 +25,11 @@ and resource cleanup via `withServer` + finally blocks.
 
 1. Result model (`core/types.ts`):
    ```ts
-   export interface ShotResult { id: string; output: string; status: string; changedRatio: number | null;
+   export type ShotStatus = "new" | "updated" | "unchanged" | "forced" | "skipped" | "failed"
+     | "fresh" | "stale" | "missing-baseline";           // closed set, DESIGN §12.2
+   export interface ShotResult { id: string;
+     output: string;                                     // normalized root-relative shot.output (POSIX)
+     status: ShotStatus; changedRatio: number | null;
      reason: string | null; durationMs: number; diffArtifact: string | null; }
    export interface RunSummary { command: "update" | "check"; root: string; startedAt: string;
      durationMs: number; shots: ShotResult[]; counts: Record<string, number>; exitCode: 0 | 1 | 2 | 3; }
@@ -47,11 +51,13 @@ and resource cleanup via `withServer` + finally blocks.
         `BASELINE_DECODE_FAILED` warning via `log.warn`.
       - `persistOutcome` (issue 17). `WRITE_FAILED` propagates (aborts the run — disk problems
         are environmental, exit 3).
-   e. Aggregate counts by status; `exitCode`: any `failed` (or check-mode `stale`/
-      `missing-baseline`) → 1, else 0. Environmental errors are thrown, not encoded (the CLI
-      layer maps them to 3 via issue 02).
+   e. Aggregate counts by status plus `counts.total` = number of selected shots (DESIGN §14.3
+      summary shape); `exitCode`: any `failed` (or check-mode `stale`/`missing-baseline`) → 1,
+      else 0. Environmental errors are thrown, not encoded (the CLI layer maps them to 3 via
+      issue 02).
 3. `update.ts` command action:
-   - Build `CliContext` → `loadConfig` → `runShots({ mode: "update", shotFilter, force })`.
+   - Build `CliContext` → `const cfg = await loadConfig(…)` →
+     `runShots({ cfg, mode: "update", shotFilter, force, log })`.
    - Human report (minimal until issue 24): one line per shot
      `  <status-padded>  <id>  (<ratio %> | reason)` via `log.info`, then a summary line; warnings
      already flow through `log.warn`.

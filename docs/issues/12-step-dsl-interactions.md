@@ -36,7 +36,8 @@ These five steps cover the vast majority of "drive the app into the documented s
 5. `select`: `page.locator(selector).selectOption(value | { label } | { index }, { timeout })`
    according to which of the three the config carries (exactly one, enforced by issue 04).
 6. All five wrap failures as `STEP_FAILED` via the issue-11 helper (message: shot id, step
-   index, type; cause first line; hint carries the selector).
+   index, type; cause first line; hint carries the selector when the step form has one —
+   unscoped `press` uses a key-focused hint instead).
 
 ## Acceptance Criteria
 
@@ -49,8 +50,10 @@ Browser tests on `form.html`:
 - [ ] `press: "Enter"` on the focused form input submits (page reflects submit); scoped form
       `{ press: "Control+K", selector: "#q" }` triggers the shortcut handler.
 - [ ] `select` works by `value`, by `label`, and by `index`, each reflected in the page.
-- [ ] Missing selector on each of the five steps → `STEP_FAILED` naming the step type and index;
-      completes within the step timeout (use `timeoutMs: 300` overrides to keep tests fast).
+- [ ] A non-matching selector on `click`, `hover`, `fill`, scoped `press`, and `select` →
+      `STEP_FAILED` naming the step type and index; completes within the step timeout (use
+      `timeoutMs: 300` overrides to keep tests fast). Unscoped `press` has no selector and
+      remains valid — malformed step shapes are issue-04 `CONFIG_INVALID`, not runtime failures.
 - [ ] The issue-11 navigation tests still pass unchanged (no interpreter regressions).
 
 ## Validation

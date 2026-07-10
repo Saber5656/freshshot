@@ -45,14 +45,17 @@ This module owns the only writes freshshot ever makes to user-visible files. It 
      short-circuits everything except `skipped/failed` (handled by the runner) to `forced`+write.
    - check: `new`/`baseline-undecodable`→`missing-baseline` (no write);
      `changed`→`stale`; `unchanged`→`fresh`. `force` is ignored in check mode.
-3. Atomic write: `ensureParentDir` (issue 03) → write to
-   `<outputDir>/.<basename>.tmp-<pid>` → `fs.rename` over the target. On any error, best-effort
-   unlink the temp file, then throw `FreshshotError("WRITE_FAILED", …, { cause })`.
+3. Atomic write: `ensureParentDir` (issue 03) → write to `<outputAbs>.tmp-<pid>` (i.e.
+   `home.png.tmp-<pid>` next to the target, DESIGN §12.2) → `fs.rename` over the target. On any
+   error, best-effort unlink the temp file, then throw
+   `FreshshotError("WRITE_FAILED", …, { cause })`.
 4. Diff artifacts: for update `updated` and check `stale` where `outcome.diffPng` is non-null,
    write `.freshshot/diffs/<shotId>.png` (atomic not required; simple write). Record the
-   root-relative path in `diffArtifact`.
+   root-relative path in `diffArtifact`. Filesystem failures here also throw
+   `FreshshotError("WRITE_FAILED", …, { cause })`.
 5. `prepareRunDirs`: delete and recreate `.freshshot/diffs`, ensure `.freshshot/tmp` exists
-   (DESIGN §15). Called once per run by the runner.
+   (DESIGN §15). Called once per run by the runner. Its filesystem failures also throw
+   `WRITE_FAILED`.
 6. The module never reads baselines (the runner reads and passes the outcome) and never touches
    paths other than: the given `outputAbs` (pre-confined by issue 04) and `.freshshot/**`.
 
@@ -71,6 +74,8 @@ This module owns the only writes freshshot ever makes to user-visible files. It 
 - [ ] `prepareRunDirs` clears stale diffs from a previous run.
 - [ ] `baseline-undecodable` in update mode → status `new`, reason `baseline-undecodable`,
       file rewritten.
+- [ ] `baseline-undecodable` in check mode → status `missing-baseline`, reason
+      `baseline-undecodable`, baseline/output bytes untouched, no diff artifact written.
 
 ## Validation
 

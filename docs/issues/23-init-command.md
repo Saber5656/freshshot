@@ -12,7 +12,8 @@ config without `--force`, and print actionable next steps (DESIGN §3.1, §14.1,
 
 `init` is the adoption entry point (`npx freshshot init`). It must be safe (never destroy an
 existing config silently), idempotent for `.gitignore`, and produce a config that passes the
-issue-04 loader after the user fills in one shot.
+issue-04 loader exactly as generated — the user then edits the server mode and the placeholder
+shot (DESIGN §3.1).
 
 ## Scope
 
@@ -21,7 +22,9 @@ issue-04 loader after the user fills in one shot.
 
 ## Detailed Requirements
 
-1. Behavior in cwd (no `--config` interplay: init always writes `./freshshot.config.yaml`):
+1. Behavior in cwd — `init` always writes `./freshshot.config.yaml`; combining the global
+   `--config` flag with `init` is rejected as `USAGE` (exit 2, message
+   `init always writes ./freshshot.config.yaml`):
    a. Config exists and no `--force` → `FreshshotError("USAGE",
       "freshshot.config.yaml already exists", { hint: "use --force to overwrite" })`, exit 2,
       file untouched. (Also detects the `.yml` variant and refuses, naming it.)
@@ -31,7 +34,8 @@ issue-04 loader after the user fills in one shot.
       exists (exact-line match, also matching `.freshshot` without slash → treated as present).
    d. Print next steps to stderr: edit server mode, add a first shot, run `freshshot update`,
       install Chromium (`npx playwright install chromium`).
-2. Starter template requirements:
+2. Starter template requirements (the template is the exported constant `CONFIG_TEMPLATE` in
+   `src/cli/templates.ts`; `init.ts` writes it verbatim):
    - The schema requires ≥1 shot, so the template ships one minimal live shot
      (`id: home`, `output: docs/images/home.png`, `steps: [goto: /]`) plus a fully commented-out
      richer example shot, and `server: { static: "." }` as a placeholder with a loud `# TODO`
@@ -53,6 +57,8 @@ issue-04 loader after the user fills in one shot.
       bytes); with the line already present (either form) → byte-identical file.
 - [ ] Existing config: `init` exits 2, config byte-identical; `init --force` overwrites.
 - [ ] `.yml`-variant config present → refusal message names `freshshot.config.yml`.
+- [ ] `freshshot init --config other.yaml` → exit 2 with the documented `USAGE` message; no
+      file written.
 - [ ] Next-steps text includes the four documented actions.
 - [ ] Template snapshot test: template mentions every §6.2 top-level key at least once
       (automated by extracting commented keys and comparing to the zod schema's key list —

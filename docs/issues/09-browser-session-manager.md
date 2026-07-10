@@ -28,7 +28,7 @@ Chromium experience must be a copy-pasteable fix, not a Playwright stack trace.
    - `chromium.launch({ headless: true })`.
    - Catch launch errors whose message indicates a missing executable (Playwright's
      "Executable doesn't exist" / "browserType.launch") and rethrow
-     `FreshshotError("BROWSER_NOT_INSTALLED", "Chromium for Playwright is not installed",
+     `new FreshshotError("BROWSER_NOT_INSTALLED", "Chromium for Playwright is not installed",
      { hint: "run: npx playwright install chromium", cause })`. Implement the message test in
      an exported pure function `isMissingBrowserError(err: unknown): boolean` so it is unit-
      testable without breaking a real install.
@@ -36,14 +36,12 @@ Chromium experience must be a copy-pasteable fix, not a Playwright stack trace.
    with exactly these options (DESIGN §10 step 1):
    `viewport: s.viewport`, `deviceScaleFactor: s.deviceScaleFactor`,
    `colorScheme: s.colorScheme`, `reducedMotion: s.reducedMotion`,
-   `timezoneId: "UTC"`, `locale: "en-US"`, `serviceWorkers: "block"` (determinism: SW caching
-   varies across runs — document this addition in a comment referencing DESIGN §10).
+   `timezoneId: "UTC"`, `locale: "en-US"`, `serviceWorkers: "block"` (DESIGN §10 step 1).
 3. `export async function closeQuietly(x: Browser | BrowserContext | null | undefined)` —
    close, swallowing errors (used in finally blocks).
-4. Vitest: define two projects in `vitest.config.ts` — `unit` (existing pattern) and `browser`
-   (`tests/browser/**`); update `.github/workflows/ci.yml` browser-tests job to run
-   `vitest run --project browser` after `npx playwright install chromium --with-deps`
-   (remove the issue-01 TODO).
+4. Vitest projects `unit`/`browser` already exist (issue 01): update the
+   `.github/workflows/ci.yml` browser-tests job to drop `--passWithNoTests` now that real
+   browser tests exist (resolving the issue-01 `TODO(issue-09)` comment).
 5. Fixture page (`tests/fixtures/site/index.html`): static HTML with a heading, a paragraph with
    `system-ui` font stack, one CSS animation (`@keyframes spin` on `#spinner`), an
    `<input id="q">`, a `<button id="btn">` that toggles `#panel` visibility via inline script,
@@ -52,7 +50,9 @@ Chromium experience must be a copy-pasteable fix, not a Playwright stack trace.
 ## Acceptance Criteria
 
 - [ ] Browser test: launch → `createShotContext` with `viewport 640×480, deviceScaleFactor 2,
-      colorScheme "dark", reducedMotion "reduce"` → a page over the static fixture reports
+      colorScheme "dark", reducedMotion "reduce"` → `const page = await context.newPage()`
+      loaded directly with `page.goto(pathToFileURL("tests/fixtures/site/index.html").href)`
+      (plain Playwright call — the step DSL is issue 11) reports
       `window.innerWidth === 640`, `devicePixelRatio === 2`,
       `matchMedia('(prefers-color-scheme: dark)').matches === true`,
       `matchMedia('(prefers-reduced-motion: reduce)').matches === true`,

@@ -46,12 +46,17 @@ downstream code never applies its own.
      viewport, nullable `selector`, `padding` int 0–200 default 0), `mask` string[] default [],
      `maskColor` default `"#FF00FF"` (regex `/^#[0-9A-Fa-f]{6}$/`), nullable `viewport`,
      nullable `colorScheme`, `diff` partial override default {}.
-   - **Step schema**: discriminated by single known key. Model each step as a strict object
-     union covering the forms in DESIGN §7 (`goto` string or `{goto, waitUntil?, timeoutMs?}`,
-     `click` string or object, `hover`, `fill` object form, `press` string or object, `select`
-     object with exactly-one-of `value|label|index` (semantic rule), `waitFor` object,
-     `wait` int 1–10000, `scroll` string, `hook` string). Every object form accepts optional
-     `timeoutMs` (100–120000). Unknown keys anywhere → zod strict error.
+   - **Step schema**: every step is either a shorthand or a strict object holding exactly one
+     step key plus optional `timeoutMs` (int 100–120000). Shorthands (cannot carry
+     `timeoutMs`): `goto: "/p"`, `click: "sel"`, `hover: "sel"`, `press: "Enter"`,
+     `wait: 500` (int 1–10000), `scroll: "sel"`, `hook: "name"`. Object forms (each a strict
+     zod object whose only keys are the step key, its params, and `timeoutMs`):
+     `{ goto, waitUntil? }`, `{ click, button?, clickCount? }`, `{ hover }`,
+     `{ fill: { selector, value } }`, `{ press, selector? }`,
+     `{ select: { selector, value? | label? | index? } }` (exactly one of the three —
+     semantic rule k), `{ waitFor: { selector, state? } }`, `{ wait }`, `{ scroll }`,
+     `{ hook }`. This gives every step type a `timeoutMs` override path per DESIGN §7.
+     Unknown keys anywhere → zod strict error.
 2. **Loader** (`load.ts`):
    - `export async function loadConfig(opts: { cwd: string; configPath?: string }): Promise<LoadedConfig>`.
    - Discovery: explicit `configPath` (relative to cwd) or `freshshot.config.yaml` then
@@ -74,7 +79,9 @@ downstream code never applies its own.
         absolute paths are stored on the result;
      i. `server.url`, `server.baseUrl`, `allowedOrigins[]` parse with `new URL` and scheme
         `http:`/`https:`;
-     j. `freezeTime` non-null ⇒ `!Number.isNaN(Date.parse(freezeTime))`;
+     j. `freezeTime` non-null ⇒ matches ISO 8601
+        (`/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/`) AND
+        `Date.parse` yields a finite timestamp;
      k. `select` steps: exactly one of `value|label|index`.
    - **Merge**: produce `shots: ResolvedShot[]` where each shot carries `effective` settings =
      global `capture` deep-merged with per-shot `viewport`/`colorScheme`/`capture`/`diff`

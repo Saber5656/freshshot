@@ -33,11 +33,19 @@ DESIGN §13.2 exactly, because CI policy (`--fail-on`) hangs off these categorie
    }
    export async function classifyCoverage(opts: {
      root: string; refs: ImageRef[]; files: string[]; errors: ScanError[];
+     skippedExternal: number;
      shots: Array<{ id: string; outputRel: string }>;
    }): Promise<CoverageReport>
    ```
-2. Rules (DESIGN §13.2), evaluated per ref with `resolved !== null`:
-   - `outsideRoot` → `broken` with reason `outside-root` (never touch the filesystem for it).
+   `ImageRef`/`ScanError` are imported from `src/scan/markdown.ts` (issue 20);
+   `classifyCoverage` consumes `resolved`, `outsideRoot`, `docFile`, `line`, `column` from each
+   ref and passes `skippedExternal` through to the report.
+2. Rules (DESIGN §13.2), evaluated per ref:
+   - `outsideRoot` → `broken` with reason `outside-root` (never touch the filesystem for it;
+     the flag is a trusted issue-20 scanner output per DESIGN §13.1/§17.3 and is not
+     re-resolved here).
+   - Extension of `resolved` is not `.png` (case-insensitive) → never `managed` (DESIGN §13.2
+     note); classify by existence like any other ref.
    - `resolved` equals some shot's `outputRel` (exact string equality of normalized
      root-relative POSIX paths) → `managed` (existence NOT required — a managed-but-not-yet-
      captured image is still managed; §13.2 note).
@@ -65,7 +73,10 @@ report for:
 - [ ] Orphan: shot whose output no doc references; non-orphan when referenced from any one of
       two docs; `skip: true` shot can be an orphan.
 - [ ] Same image referenced from two files → two managed entries, one shot, zero orphans.
-- [ ] External refs counted in `skippedExternal`, absent from all category lists.
+- [ ] `skippedExternal` passes through from the scanner unchanged; external refs never appear
+      in any category list.
+- [ ] An existing non-PNG image (`logo.svg`) whose path exactly equals a shot's `outputRel`
+      is classified `unmanaged` (never `managed`).
 - [ ] Ordering is deterministic (shuffled input → identical report).
 - [ ] Line coverage of `scan/coverage.ts` ≥ 95 %.
 
@@ -83,4 +94,5 @@ report for:
 
 ## Design References
 
-- DESIGN §13.2 (classification table and notes), ADR-001
+- DESIGN §13.2 (classification table and notes), §13.1/§17.3 (outside-root refs are trusted
+  scanner outputs, never followed), ADR-001

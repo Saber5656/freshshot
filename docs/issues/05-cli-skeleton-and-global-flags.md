@@ -33,8 +33,10 @@ exit-code contract (DESIGN §14.4) enforced in exactly one place.
      from DESIGN §14.1. Until their issues land, each action throws
      `new FreshshotError("USAGE", "command '<name>' is not implemented yet")` — tests pin the
      exit code 2 so stubs cannot be mistaken for success.
-   - `update`/`check` accept repeatable `--shot <id>`; `update` accepts `--force`; `coverage`
-     accepts `--fail-on <cats>`; parsing only, no behavior.
+   - Full per-command flag matrix (parsing only, no behavior yet):
+     `init --force`; `update --shot <id>` (repeatable), `--force`, `--json`;
+     `check --shot <id>` (repeatable), `--json`; `coverage --fail-on <cats>`, `--json`;
+     `list --json`.
    - Top-level runner: `program.parseAsync().catch(...)` never lets an exception escape; on
      error, print via `formatError(e, { verbose })` to stderr and set `process.exitCode =
      exitCodeForError(e)`. **Never call `process.exit()`** (streams must flush); document in a
@@ -42,7 +44,9 @@ exit-code contract (DESIGN §14.4) enforced in exactly one place.
    - Unknown command/flag: commander configured to write its message to stderr and produce exit
      code 2 (`exitOverride` mapped to `USAGE`).
 2. `context.ts`: `export interface CliContext { configPath?: string; verbose: boolean; quiet: boolean; color: boolean; json: boolean }`
-   built from parsed flags; `color` = `!--no-color && !process.env.NO_COLOR && stderr.isTTY`.
+   built from parsed flags;
+   `color: options.color !== false && !process.env.NO_COLOR && process.stderr.isTTY === true`
+   (commander maps `--no-color` to `options.color === false`).
 3. Minimal `reporter.ts`:
    - `createLogger(ctx)` returning `{ info(msg), warn(msg), error(msg), debug(msg) }`;
      `debug` only when verbose; `info` suppressed when quiet; all write to **stderr**; colors

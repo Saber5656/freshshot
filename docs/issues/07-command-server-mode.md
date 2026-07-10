@@ -22,16 +22,21 @@ tools, so the state machine, diagnostics, and teardown are specified exactly.
 ## Detailed Requirements
 
 1. `export async function startCommandServer(opts): Promise<AppServer>` where `opts` =
-   `{ command: string; url: string; readyPath: string; readyTimeoutMs: number; env: Record<string,string>; cwd: string /* abs */ }`.
+   `{ command: string; url: string; readyPath: string; readyTimeoutMs: number;
+   env: Record<string,string>; cwd: string /* abs */;
+   onOutput?: (line: string) => void; graceMs?: number /* SIGTERM→SIGKILL grace, default 5000 */ }`.
 2. Spawn: `child_process.spawn(command, { shell: true, cwd, env: { ...process.env, ...env },
    stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" })`.
 3. Output capture: merge stdout+stderr line streams into a ring buffer of the last 200 lines;
    expose the last 40 (sanitized via `sanitizeText`, issue 02) in error diagnostics. When the
-   runner is in `--verbose` mode the caller may subscribe via an `onOutput?: (line) => void`
-   option — include it.
-4. Readiness: every 250 ms, `GET new URL(readyPath, url).href` with a per-request 2 s timeout
-   (`AbortSignal.timeout`); ready when status is 200–399. Connection errors and other statuses
-   continue polling.
+   runner is in `--verbose` mode the caller may subscribe via the `onOutput` option; `onOutput`
+   receives `sanitizeText(line)` output only (DESIGN §17.7) — raw child output is never
+   forwarded for display.
+4. Readiness: every 250 ms, probe `new URL(readyPath, new URL(url).origin).href`
+   (origin-rooted per DESIGN §9.2) using
+   `fetch(probeUrl, { redirect: "manual", signal: AbortSignal.timeout(2000) })`; ready when the
+   **immediate** response status is 200–399 (3xx is counted as ready, never followed).
+   Connection errors and other statuses continue polling.
 5. State machine (DESIGN §9.2), enforced with an internal `state` field and tests:
    - child exits (any code) before ready → kill remnants, throw
      `FreshshotError("SERVER_EXITED_EARLY", …, { hint })` including exit code/signal + last 40
@@ -60,15 +65,16 @@ tools, so the state machine, diagnostics, and teardown are specified exactly.
 - [ ] Fixture "ignores SIGTERM" → `stop()` resolves via the SIGKILL path in ≈5–6 s (test uses a
       reduced grace via an injectable `graceMs` option, default 5000).
 - [ ] Fixture asserting `env` merge (`process.env.FRESHSHOT_TEST` visible) and `cwd`.
-- [ ] Readiness accepts 302; keeps polling on 500 until it becomes 200 (fixture flips status).
+- [ ] Readiness accepts an immediate 302 without following it (fixture asserts exactly one
+      request per poll); keeps polling on 500 until the fixture flips to 200.
 - [ ] ANSI escape sequences in fixture output do not appear in thrown error messages.
 - [ ] POSIX tests pass on macOS + Linux CI; Windows-specific branch covered by unit-testing the
       command construction (no Windows CI in v1 — known unknown #4).
 
 ## Validation
 
-- Integration tests with the five fixtures above; run repeatedly (`vitest --repeat 3` locally)
-  to check for teardown races.
+- Integration tests covering all fixture behaviors listed in the acceptance criteria; run
+  repeatedly (`vitest --repeat 3` locally) to check for teardown races.
 
 ## Dependencies
 

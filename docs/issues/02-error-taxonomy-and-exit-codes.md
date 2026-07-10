@@ -27,7 +27,7 @@ issues never invent ad-hoc error shapes.
    "CAPTURE_FAILED" | "WRITE_FAILED" | "DOCS_PARSE_FAILED" | "BASELINE_DECODE_FAILED"`.
 2. `export class FreshshotError extends Error` with fields
    `readonly code: ErrorCode`, `readonly hint?: string`, `override cause?: unknown`;
-   constructor `(code, message, opts?: { hint?: string; cause?: unknown })`;
+   constructor `(code: ErrorCode, message: string, opts?: { hint?: string; cause?: unknown })`;
    `name` set to `"FreshshotError"`.
 3. `export function isFreshshotError(e: unknown): e is FreshshotError` (instanceof + duck-type
    fallback on `name`+`code` for cross-realm safety).
@@ -36,13 +36,16 @@ issues never invent ad-hoc error shapes.
    - 3: `SERVER_START_TIMEOUT`, `SERVER_EXITED_EARLY`, `SERVER_UNREACHABLE`,
         `BROWSER_NOT_INSTALLED`, `WRITE_FAILED`
    - 1: `NAV_BLOCKED_ORIGIN`, `STEP_FAILED`, `HOOK_FAILED`, `CAPTURE_FAILED`,
-        `DOCS_PARSE_FAILED`, `BASELINE_DECODE_FAILED` (these normally surface as per-shot /
-        per-file statuses, but if one escapes to top level it is a policy failure)
+        `DOCS_PARSE_FAILED` (these normally surface as per-shot / per-file statuses, but if one
+        escapes to top level it is a policy failure). `BASELINE_DECODE_FAILED` is warning-only
+        per DESIGN §12.1/§16 and is never thrown in practice; map it to 1 purely for union
+        exhaustiveness, with a code comment saying so.
    - Non-`FreshshotError` values: 3 (unexpected runtime failure).
 5. `export function formatError(e: unknown, opts: { verbose: boolean }): string`:
    - For `FreshshotError`: `error[CODE]: message` on line 1; `  hint: …` line when present;
-     `cause` summarized (its `message` only) when present; full stack appended only when
-     `verbose`.
+     then `  cause: <text>` when a cause is present, where
+     `<text> = cause instanceof Error ? cause.message : String(cause)`; full stack appended
+     only when `verbose` (order: message, hint, cause, stack).
    - For unknown values: `error[UNEXPECTED]: <String(e)>`, stack when verbose and available.
    - Strips ANSI escape and C0 control characters (except `\n`, `\t`) from all interpolated
      message/hint/cause text (DESIGN §17.7). Provide the shared helper

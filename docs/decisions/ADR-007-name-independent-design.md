@@ -23,7 +23,10 @@ before publication.
 ## Consequences
 
 - Design and implementation proceed without waiting on branding.
-- The rename sweep is one focused, testable change (grep-clean acceptance criterion).
+- The rename sweep is one focused, testable change (grep-clean acceptance criterion). Historical
+  planning docs (DESIGN, ISSUE_PLAN, issue drafts, ADRs) are not rewritten; instead each
+  canonical planning doc receives a one-line rename banner mapping the working name to the final
+  name, so the canonical docs never go stale (mechanics in issue 29).
 - GitHub repo rename (redirects preserved by GitHub) happens at the same gate.
 
 ## Alternatives considered

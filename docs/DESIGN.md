@@ -276,8 +276,9 @@ one actionable hint.
 
 Steps run strictly in order inside one page. A step failure fails the shot (no retries in v1)
 with `STEP_FAILED` naming shot id, step index (0-based), step type, and the Playwright error.
-Selectors are Playwright selector strings. Every step accepts optional `timeoutMs` (overrides
-`capture.stepTimeoutMs`).
+Selectors are Playwright selector strings. Every step accepts optional `timeoutMs` via its
+object form (overrides `capture.stepTimeoutMs`); string/number shorthand forms cannot carry
+overrides.
 
 | Step | Forms | Semantics (Playwright mapping) |
 |---|---|---|
@@ -299,7 +300,8 @@ Unknown step keys are `CONFIG_INVALID` at load time (not at run time).
 - One optional ESM module per project: `hooks: ./freshshot.hooks.mjs` (`.mjs` or `.js` only in
   v1; must resolve inside root).
 - Loaded once per run via `import(pathToFileURL(abs).href)`.
-- Every export used by a `hook` step must be `async function (ctx): Promise<void>` with
+- Every export used by a `hook` step must be a function `(ctx) => void | Promise<void>` — its
+  result is awaited — with
   `ctx = { page /* Playwright Page */, baseUrl: string, shotId: string, log(msg: string): void }`.
 - Per-invocation timeout: `capture.stepTimeoutMs` unless the step sets `timeoutMs`. Timeout or
   throw → `HOOK_FAILED` naming the hook and shot.
@@ -351,7 +353,8 @@ IDLE → STARTING → READY → STOPPING → STOPPED
 Applied per shot, before steps run, in this order:
 
 1. Context creation with `viewport`, `deviceScaleFactor`, `colorScheme`, `reducedMotion`,
-   `timezoneId: "UTC"`, `locale: "en-US"` (fixed in v1).
+   `timezoneId: "UTC"`, `locale: "en-US"`, `serviceWorkers: "block"` (fixed in v1; blocking
+   service workers removes run-to-run cache variance).
 2. `freezeTime` set → Playwright `clock.install({ time })` on the context.
 3. `seedRandom: true` → `addInitScript` replacing `Math.random` with mulberry32(seed=1).
 4. After the final step, before capture:
@@ -372,8 +375,11 @@ an unchanged app MUST report every shot `unchanged` on the second run, in the sa
 - One fresh browser context per shot (no state leaks), closed in a finally block.
 - `type: viewport` → `page.screenshot({ fullPage: false })`.
 - `type: fullPage` → `page.screenshot({ fullPage: true })`.
-- `type: element` → bounding box of `selector` (error `CAPTURE_FAILED` if not visible), expanded
-  by `padding` px, clamped to the page, captured via `page.screenshot({ clip })`.
+- `type: element`, `padding: 0` → `locator.screenshot()` (Playwright scrolls the element into
+  view itself). With `padding > 0` → `scrollIntoViewIfNeeded()`, take the viewport-relative
+  `boundingBox()` (`CAPTURE_FAILED` when null or zero-sized), expand by `padding` px, clamp to
+  the viewport, capture via `page.screenshot({ clip })`. Padded captures of elements larger
+  than the viewport are clipped to the viewport (documented v1 limitation).
 - `mask` selectors → Playwright native `mask: [locators]` + `maskColor`.
 - Output: PNG bytes in memory; persistence decided by the diff gate (§12).
 
@@ -417,7 +423,9 @@ an unchanged app MUST report every shot `unchanged` on the second run, in the sa
   - `imageReference` + `definition` pairs
   - `html` nodes: every `<img ... src="…">` via a conservative regex (`/<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/gi`)
 - Each hit → `{ docFile, line, column, rawRef }`.
-- Skip refs that are absolute URLs (`http:`, `https:`, `//`), `data:`, or anchors.
+- Skip refs that are absolute URLs (`http:`, `https:`, `//`), `data:`, or anchors — they are
+  excluded from the reference list; the scanner reports a diagnostic count of skipped external
+  refs plus the list of scanned files.
 - Resolve: refs starting with `/` resolve from project root; others relative to the doc's
   directory. Strip query/fragment. Refs resolving outside root are reported as `broken`
   (reason `outside-root`), never followed.
@@ -479,6 +487,7 @@ Unknown `--shot` id → `USAGE` error (exit 2) listing valid ids.
       "status": "updated",               // §12.2 status set
       "changedRatio": 0.0231,            // null when not compared
       "reason": null,                    // e.g. "dimension-mismatch", error summary for failed
+      "diffArtifact": null,              // root-relative diff path for updated/stale, else null
       "durationMs": 830 }
   ],
   "coverage": {                           // coverage command only
@@ -487,6 +496,7 @@ Unknown `--shot` id → `USAGE` error (exit 2) listing valid ids.
     "orphans": [ { "shotId": "old", "output": "docs/images/old.png" } ]
   },
   "summary": { "total": 5, "updated": 1, "unchanged": 3, "failed": 1 },
+                                          // coverage runs: category counts plus "external" and "files"
   "exitCode": 1
 }
 ```
@@ -538,7 +548,7 @@ Precedence when multiple apply: 3 > 2 > 1.
 | `CAPTURE_FAILED` | 1 (shot `failed`) | shot.ts |
 | `WRITE_FAILED` | 3 | diff/write.ts |
 | `DOCS_PARSE_FAILED` | 1 (file-level, scan continues) | scan/markdown.ts |
-| `BASELINE_DECODE_FAILED` | warning only | diff/compare.ts |
+| `BASELINE_DECODE_FAILED` | warning only (never thrown in practice; defensive mapping: 1) | diff/compare.ts |
 
 Per-shot errors never abort the run; they mark the shot `failed` and the run exits 1.
 
@@ -631,7 +641,9 @@ loopback-only server; path confinement everywhere.
 | E2E | vitest + execa on built CLI | fixture project lifecycle: init → update (new) → update (unchanged) → mutate app → update (updated) → check (stale) → coverage; asserts files, statuses, exit codes, `--json` against golden (normalized) output |
 | Determinism invariant | e2e | second consecutive `update` is 100 % `unchanged` (same env) — REQUIRED in CI |
 
-- Fixture app: `tests/fixtures/site/` static HTML/CSS using system font stack, no JS timers.
+- Fixtures: `tests/fixtures/site/` (static pages for browser/integration tests) and
+  `tests/fixtures/e2e-app/` (complete sample project — app, docs, config — for the e2e suite);
+  both use the system font stack, deterministic layout, no JS timers.
 - CI: GitHub Actions; `ubuntu-latest` (Node 20 + 22) required, `macos-latest` (Node 22) smoke.
   Steps: `npm ci` → biome → typecheck → unit → `npx playwright install chromium --with-deps` →
   integration + e2e.
@@ -640,7 +652,7 @@ loopback-only server; path confinement everywhere.
 
 ## 19. Packaging and release (v1)
 
-- ESM-only npm package; `bin: { freshshot: "dist/cli/main.js" }`; `files: ["dist", "README.md", "LICENSE"]`;
+- ESM-only npm package; `bin: { freshshot: "dist/cli/main.js" }`; `files: ["dist", "README.md", "LICENSE", "CHANGELOG.md"]`;
   `engines: { node: ">=20" }`; no `exports` API surface beyond the bin (private API).
 - Build with tsup (single entry, shebang banner, sourcemaps off for publish).
 - License: MIT. CHANGELOG.md maintained manually (Keep a Changelog format).

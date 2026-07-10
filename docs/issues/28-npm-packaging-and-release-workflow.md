@@ -30,13 +30,20 @@ everything up to — but excluding — pressing the button.
      `publishConfig: { access: "public", provenance: true }`.
    - `version` stays `0.0.0`; the release workflow publishes whatever version a human tagged
      (see RELEASING.md flow below).
+   - Verify (and keep) `bin: { "freshshot": "dist/cli/main.js" }` and
+     `engines: { "node": ">=20" }` from issue 01, and that no `exports`/`main` field exposes a
+     programmatic API (DESIGN §19: the bin is the only supported surface).
    - Working name caveat: name remains `freshshot` until issue 29's sweep; `pack-smoke` must
      not hardcode the name (read it from package.json).
 2. `scripts/pack-smoke.mjs` (run via `npm run pack:smoke`):
    - `npm pack` into a temp dir → `npm install <tarball>` in a fresh temp project →
      run `npx <bin> --version` (assert semver output) → `npx <bin> init` (assert config file
-     created) → `npx <bin> coverage` against a one-file docs fixture (assert exit 0). No
-     browser required (choose commands that don't need Chromium so the smoke runs anywhere).
+     created) → then, in the same temp project, write a coverage fixture: overwrite
+     `freshshot.config.yaml` with static mode (`static: "."`), one shot
+     (`id: home`, `output: docs/images/home.png`, `steps: [goto: /]`), write `README.md`
+     containing `![home](docs/images/home.png)` and a placeholder PNG at that path, and run
+     `npx <bin> coverage --json` (assert exit 0 and the ref classified `managed`). No browser
+     required (only commands that don't need Chromium, so the smoke runs anywhere).
    - Fails loudly on any nonzero exit; cleans up temp dirs.
 3. `.github/workflows/release.yml`:
    - `workflow_dispatch` with an explicit `version` input (must match `package.json` version;
@@ -47,9 +54,12 @@ everything up to — but excluding — pressing the button.
      and npm Trusted Publishing if configured, else `NODE_AUTH_TOKEN` from repo secret).
    - All actions SHA-pinned; `npm publish` step guarded by an environment named `release`
      (environment protection rules configured by the human maintainer).
-4. `CHANGELOG.md`: Keep a Changelog format, `## [Unreleased]` section listing v1 features
+4. Supply-chain verification (DESIGN §17.9): assert `package-lock.json` is committed, every
+   CI/release workflow installs with `npm ci`, and `.github/dependabot.yml` (issue 01) still
+   covers the npm + github-actions ecosystems; add whatever is missing.
+5. `CHANGELOG.md`: Keep a Changelog format, `## [Unreleased]` section listing v1 features
    (one bullet per shipped issue area).
-5. `RELEASING.md` (maintainer doc): prerequisites checklist —
+6. `RELEASING.md` (maintainer doc): prerequisites checklist —
    naming gate done (issue 29), security audit gaps zero (issue 27), npm token or Trusted
    Publisher configured **manually by the maintainer**, GitHub `release` environment created;
    then the release steps: bump version + update CHANGELOG → commit → tag `vX.Y.Z` → push →
@@ -76,8 +86,8 @@ everything up to — but excluding — pressing the button.
 
 ## Dependencies
 
-- 25 (product complete). Publish execution additionally gated by 27 and 29 (documented, not a
-  file dependency).
+- 25 (end-to-end CLI test suite and fixture project). Publish execution additionally gated by
+  27 and 29 (documented gates, not file dependencies).
 
 ## Non-goals
 

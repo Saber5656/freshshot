@@ -25,8 +25,10 @@ must never leave a dev server or static server running.
      `url`, `readyPath`, `readyTimeoutMs`, `env`.
    - static mode → `startStaticServer({ root: cfg.staticDirAbs })` (absolute path resolved and
      confined by issue 04).
-   - external mode → probe `GET cfg.server.baseUrl` once with a 5 s timeout; **any** HTTP
-     response (any status) counts as reachable; network error/timeout →
+   - external mode → probe exactly once with
+     `fetch(cfg.server.baseUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) })`;
+     **any** immediate HTTP response (any status, including 3xx — redirects are never followed,
+     so exactly one request is made) counts as reachable; network error/timeout →
      `FreshshotError("SERVER_UNREACHABLE", …, { hint: "start your app, or check server.baseUrl" })`.
      Return `{ baseUrl, stop: async () => {} }`.
 2. `export async function withServer<T>(cfg: LoadedConfig, fn: (server: AppServer) => Promise<T>): Promise<T>`:
@@ -46,7 +48,9 @@ must never leave a dev server or static server running.
 - [ ] `withServer` calls `stop()` when `fn` resolves, when `fn` throws, and the error from `fn`
       is rethrown unchanged (assert same instance).
 - [ ] `normalizeBaseUrl("http://x:1/") === "http://x:1"` and idempotent.
-- [ ] No mode leaves a listening socket after `withServer` returns (assert connection refused).
+- [ ] Command/static modes leave no freshshot-owned listening socket after `withServer` returns
+      (assert connection refused); external mode leaves the pre-existing user-owned listener
+      untouched (assert it is still reachable afterwards).
 
 ## Validation
 

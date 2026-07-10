@@ -29,8 +29,10 @@ and the §14.4 exit-code contract, end to end, in CI, on every commit.
    with execa (`node <repo>/dist/cli/main.js`, `cwd` = temp project). Never mutate the repo's
    own fixture copy. Build once via a global setup (`npm run build` precondition documented).
 2. Lifecycle test (single serial test, ordered phases with assertions after each):
-   a. `init --force` variant NOT used: fixture ships its own config (init is covered by issue
-      23); instead assert `--config` discovery works from the project root.
+   a. Phase 0 — `freshshot init` in a separate empty temp dir: assert the generated config
+      loads and `.gitignore` gains `.freshshot/` (smoke of the DESIGN §18 lifecycle start;
+      deep init behavior stays in issue 23's suite). The main fixture project ships its own
+      config; assert default config discovery works from its root.
    b. `update --json` → all shots `new`, exit 0, PNGs exist, JSON golden-normalized.
    c. `update --json` again → **every shot `unchanged`, exit 0** — the determinism invariant;
       the test MUST fail the suite loudly if any shot reports otherwise (custom assertion
@@ -38,7 +40,8 @@ and the §14.4 exit-code contract, end to end, in CI, on every commit.
    d. Mutate the app (sed-style CSS color swap in the temp copy) → `update` → affected shot
       `updated` (ratio > gate), unaffected `unchanged`; diff artifact exists.
    e. Revert file mutation; corrupt one baseline (truncate) → `update` → that shot `new` with
-      `baseline-undecodable` warning on stderr.
+      a `BASELINE_DECODE_FAILED` warning on stderr (DESIGN §12.1/§16) and reason
+      `baseline-undecodable` in the JSON document.
    f. Mutate app again → `check` → `stale`, exit 1, baselines untouched (hash check), diff
       artifact present.
    g. Delete one baseline → `check` → `missing-baseline`, exit 1.
@@ -61,6 +64,11 @@ and the §14.4 exit-code contract, end to end, in CI, on every commit.
 - [ ] Determinism invariant phase (c) is present, labeled, and green 3× consecutively in CI
       (re-run twice manually; note run links in the PR).
 - [ ] Exit-code matrix covers 0/1/2/3 with the exact codes asserted.
+- [ ] The CI run containing this suite also executes the security regression tests owned by
+      issues 03/06/11 — `tests/unit/paths.test.ts` (confinement incl. symlinks),
+      `tests/integration/static-server.test.ts` (traversal cases),
+      `tests/browser/steps-navigation.test.ts` (origin policy) — asserted by the workflow's
+      project/pattern list covering all three files (ISSUE_PLAN §6.3).
 - [ ] Suite leaves no processes/listeners (execa `cleanup` verified; CI job ends without hang).
 - [ ] Artifacts uploaded on failure (verify once by forcing a failure in a scratch commit,
       then revert — link the red run in the PR).
@@ -68,8 +76,9 @@ and the §14.4 exit-code contract, end to end, in CI, on every commit.
 
 ## Validation
 
-- CI green on ubuntu + the macOS smoke job (macOS runs unit/integration only if minutes are a
-  concern — but e2e MUST run on ubuntu; document the choice in the workflow comment).
+- e2e runs inside the `browser-tests` job (ubuntu-latest, Node 22); the unit/integration
+  matrix (ubuntu Node 20+22, macOS Node 22 smoke) is inherited unchanged from issue 01's
+  workflow. CI green overall.
 
 ## Dependencies
 
