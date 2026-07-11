@@ -7,8 +7,8 @@ Chromium session and context factory
 Implement `src/capture/browser.ts`: launch/close headless Chromium via Playwright, translate a
 missing browser install into `BROWSER_NOT_INSTALLED`, and create per-shot browser contexts from
 a shot's effective settings (viewport, deviceScaleFactor, colorScheme, reducedMotion, fixed
-timezone/locale). Also establish the vitest "browser" test project that CI's `browser-tests`
-job runs (replacing the issue-01 placeholder).
+timezone/locale). Also add the first tests to the vitest `browser` project (created by issue
+01) and drop the CI job's `--passWithNoTests` placeholder flag.
 
 ## Context
 
@@ -18,8 +18,8 @@ Chromium experience must be a copy-pasteable fix, not a Playwright stack trace.
 
 ## Scope
 
-- `src/capture/browser.ts`, vitest config update for a `browser` project
-  (`tests/browser/**/*.test.ts`), `tests/browser/browser-manager.test.ts`,
+- `src/capture/browser.ts`, `tests/browser/browser-manager.test.ts` (first tests in the
+  issue-01 `browser` vitest project), CI workflow tweak (drop `--passWithNoTests`),
   fixture page `tests/fixtures/site/index.html` (created here; extended by later issues).
 
 ## Detailed Requirements

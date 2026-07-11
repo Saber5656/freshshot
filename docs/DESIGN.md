@@ -628,8 +628,9 @@ loopback static server, and the npm supply chain.
 ### 17.10 Secure defaults recap
 
 deny-by-default origins; report-only coverage (opt-in fail); no retries hiding real breakage;
-no network calls besides the configured app; no telemetry; strict schema (typos fail loudly);
-loopback-only server; path confinement everywhere.
+no freshshot-initiated network calls besides the configured app and allow-listed origins
+(the target app's own sub-resource requests are not blocked in v1, §17.4); no telemetry;
+strict schema (typos fail loudly); loopback-only server; path confinement everywhere.
 
 ## 18. Testing strategy
 
